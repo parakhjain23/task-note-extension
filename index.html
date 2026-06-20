@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Reminder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="newtab-body">
+  <div class="newtab-stage">
+    <aside id="logDateSidebar" class="log-date-sidebar hidden">
+      <nav id="logDateList" class="log-date-list" aria-label="Log dates"></nav>
+    </aside>
+
+    <div class="newtab-container">
+    <header class="header">
+      <div class="header-title">
+        <span class="logo" id="logoIcon"></span>
+        <h1 id="viewTitle">Tasks</h1>
+      </div>
+      <div class="header-actions">
+        <span id="viewHint" class="view-hint">ESC → Logs</span>
+        <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings"></button>
+      </div>
+    </header>
+
+    <div id="tasksPanel">
+      <nav class="tab-bar">
+        <button data-tab="open" class="tab-btn active">Open <span id="countOpen" class="tab-count">0</span></button>
+        <button data-tab="snooze" class="tab-btn">Snooze <span id="countSnooze" class="tab-count">0</span></button>
+        <button data-tab="done" class="tab-btn">Done <span id="countDone" class="tab-count">0</span></button>
+      </nav>
+
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search tasks..." autocomplete="off">
+      </div>
+
+      <div class="task-scroll">
+        <main id="taskList" class="task-list cards"></main>
+        <div id="emptyState" class="empty-state hidden">
+          <p>No tasks here</p>
+          <span>Add one below to get started</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="logsPanel" class="hidden">
+      <div class="logs-toolbar">
+        <span class="logs-toolbar-label">Activity log</span>
+        <span id="logCount" class="tab-count">0</span>
+      </div>
+      <div class="task-scroll">
+        <main id="logList" class="log-list"></main>
+        <div id="logEmptyState" class="empty-state hidden">
+          <p>No logs yet</p>
+          <span>Press ⌘+Enter to add a log</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-composer">
+      <div class="chat-input-row">
+        <input type="text" id="quickAddInput" placeholder='Add a task… "Call dentist tomorrow at 9am"' autocomplete="off" autofocus>
+        <button id="quickAddBtn" class="btn btn-primary chat-add-btn" aria-label="Add">Add</button>
+      </div>
+      <p id="composerHint" class="nlp-hint">Enter to add task · ⌘+Enter for log · ESC to switch views</p>
+    </div>
+    </div>
+  </div>
+
+  <div id="snoozeMenu" class="snooze-menu hidden"></div>
+
+  <script src="focus-composer.js"></script>
+  <script type="module" src="index.js"></script>
+</body>
+</html>

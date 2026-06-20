@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Task Reminder",
+  "version": "1.3.1",
+  "description": "Personal task and reminder manager with new tab task board and side panel editor",
+  "permissions": ["alarms", "notifications", "storage", "sidePanel", "identity", "tabs"],
+  "oauth2": {
+    "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/drive.file"]
+  },
+  "action": {
+    "default_title": "Open Tasks",
+    "default_icon": {
+      "16": "images/icon-16.png",
+      "48": "images/icon-48.png",
+      "128": "images/icon-128.png"
+    }
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "icons": {
+    "16": "images/icon-16.png",
+    "48": "images/icon-48.png",
+    "128": "images/icon-128.png"
+  }
+}

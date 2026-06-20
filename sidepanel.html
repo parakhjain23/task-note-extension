@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Details</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="sidepanel-body">
+  <header class="header sidepanel-header">
+    <button id="backBtn" class="icon-btn" aria-label="Back" title="Back"></button>
+    <h1 id="panelTitle" class="panel-title">Task</h1>
+    <button id="closePanelBtn" class="icon-btn" aria-label="Close"></button>
+  </header>
+
+  <div class="sidepanel-content">
+    <input type="text" id="title" class="task-title-input" placeholder="Task title" required>
+
+    <div class="meta-grid">
+      <div class="meta-item">
+        <span class="meta-label">Status</span>
+        <select id="status" class="meta-control">
+          <option value="active">Open</option>
+          <option value="completed">Done</option>
+        </select>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Priority</span>
+        <select id="priority" class="meta-control">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Date</span>
+        <input type="date" id="reminderDate" class="meta-control">
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Time</span>
+        <input type="time" id="reminderTime" class="meta-control">
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Repeat</span>
+        <select id="repeatType" class="meta-control">
+          <option value="">None</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Tags</span>
+        <input type="text" id="tags" class="meta-control" placeholder="personal, work">
+      </div>
+      <div class="meta-item meta-item-full">
+        <span class="meta-label">Link</span>
+        <input type="url" id="url" class="meta-control" placeholder="https://…">
+      </div>
+    </div>
+
+    <div id="snoozeRow" class="snooze-banner hidden">
+      <span>Snoozed until <strong id="snoozeUntilLabel"></strong></span>
+      <button type="button" id="unsnoozeBtn" class="btn btn-secondary btn-sm">Unsnooze</button>
+    </div>
+
+    <div class="sidepanel-actions">
+      <button type="button" id="snoozeBtn" class="btn btn-secondary btn-sm">Snooze</button>
+      <button type="button" id="completeBtn" class="btn btn-primary btn-sm">Complete</button>
+      <button type="button" id="deleteBtn" class="btn btn-danger btn-sm">Delete</button>
+    </div>
+
+    <div class="editor-section">
+      <span class="meta-label editor-label">Description</span>
+      <div id="editorHolder" class="editor-holder"></div>
+    </div>
+
+    <div id="snoozePicker" class="snooze-picker hidden">
+      <p>Snooze until</p>
+      <div id="snoozeOptions" class="snooze-options"></div>
+    </div>
+
+    <p id="taskMeta" class="task-meta-footer"></p>
+  </div>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>
