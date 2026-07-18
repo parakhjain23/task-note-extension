@@ -15,8 +15,11 @@
     <div class="newtab-container">
     <header class="header">
       <div class="header-title">
-        <span class="logo" id="logoIcon"></span>
-        <h1 id="viewTitle">Tasks</h1>
+        <nav class="tab-bar" id="taskTabs">
+          <button data-tab="open" class="tab-btn active">Open <span id="countOpen" class="tab-count">0</span></button>
+          <button data-tab="snooze" class="tab-btn">Snooze <span id="countSnooze" class="tab-count">0</span></button>
+          <button data-tab="done" class="tab-btn">Done <span id="countDone" class="tab-count">0</span></button>
+        </nav>
       </div>
       <div class="header-actions">
         <span id="viewHint" class="view-hint">ESC → Logs</span>
@@ -25,12 +28,6 @@
     </header>
 
     <div id="tasksPanel">
-      <nav class="tab-bar">
-        <button data-tab="open" class="tab-btn active">Open <span id="countOpen" class="tab-count">0</span></button>
-        <button data-tab="snooze" class="tab-btn">Snooze <span id="countSnooze" class="tab-count">0</span></button>
-        <button data-tab="done" class="tab-btn">Done <span id="countDone" class="tab-count">0</span></button>
-      </nav>
-
       <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Search tasks..." autocomplete="off">
       </div>
@@ -58,7 +55,41 @@
       </div>
     </div>
 
+    <div id="remindersPanel" class="hidden">
+      <div class="logs-toolbar">
+        <span class="logs-toolbar-label">Reminders</span>
+        <span id="reminderCount" class="tab-count">0</span>
+      </div>
+      <div class="task-scroll">
+        <main id="reminderList" class="task-list cards"></main>
+        <div id="reminderEmptyState" class="empty-state hidden">
+          <p>No reminders</p>
+          <span>Add one below with date, time and repeat</span>
+        </div>
+      </div>
+      <div class="reminder-help">
+        <p class="reminder-help-title">How it works</p>
+        <ul class="reminder-help-list">
+          <li>"remind me at 6 pm for dinner" → <em>dinner</em>, today 6 PM</li>
+          <li>"remind me every day at 12:30 PM" → repeats daily</li>
+          <li>"remind me every year on 12th April at 8 am for birthday" → repeats yearly</li>
+        </ul>
+        <p class="reminder-help-note">"for …" becomes the title · bare hours mean PM · past times roll forward · also works: tomorrow, tonight, next Monday, in 2 hours</p>
+      </div>
+    </div>
+
     <div class="chat-composer">
+      <div id="reminderFields" class="reminder-fields hidden">
+        <input type="date" id="reminderDateInput" aria-label="Date">
+        <input type="time" id="reminderTimeInput" aria-label="Time">
+        <select id="reminderRepeatInput" aria-label="Repeat">
+          <option value="">Once</option>
+          <option value="daily">Every day</option>
+          <option value="weekly">Every week</option>
+          <option value="monthly">Every month</option>
+          <option value="yearly">Every year</option>
+        </select>
+      </div>
       <div class="chat-input-row">
         <input type="text" id="quickAddInput" placeholder='Add a task… "Call dentist tomorrow at 9am"' autocomplete="off" autofocus>
         <button id="quickAddBtn" class="btn btn-primary chat-add-btn" aria-label="Add">Add</button>

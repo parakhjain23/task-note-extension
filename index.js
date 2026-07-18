@@ -18,8 +18,8 @@ import {
   formatRelativeTime,
   escapeHtml,
 } from './lib/utils.js';
-import { parseTaskInput } from './lib/nlp-parser.js';
-import { repeatLabel } from './lib/repeat.js';
+import { parseTaskInput, parseReminderInput } from './lib/nlp-parser.js';
+import { repeatLabel, nextRepeatTime } from './lib/repeat.js';
 import { TABS, filterTasksByTab, countByTab } from './lib/task-tabs.js';
 import { applyTheme, listenForThemeChanges } from './lib/theme.js';
 import { icon } from './lib/icons.js';
@@ -34,9 +34,16 @@ const logList = document.getElementById('logList');
 const logEmptyState = document.getElementById('logEmptyState');
 const tasksPanel = document.getElementById('tasksPanel');
 const logsPanel = document.getElementById('logsPanel');
+const remindersPanel = document.getElementById('remindersPanel');
+const reminderList = document.getElementById('reminderList');
+const reminderEmptyState = document.getElementById('reminderEmptyState');
+const reminderFields = document.getElementById('reminderFields');
+const reminderDateInput = document.getElementById('reminderDateInput');
+const reminderTimeInput = document.getElementById('reminderTimeInput');
+const reminderRepeatInput = document.getElementById('reminderRepeatInput');
 const logDateSidebar = document.getElementById('logDateSidebar');
 const logDateList = document.getElementById('logDateList');
-const viewTitle = document.getElementById('viewTitle');
+const taskTabs = document.getElementById('taskTabs');
 const viewHint = document.getElementById('viewHint');
 const composerHint = document.getElementById('composerHint');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -51,7 +58,6 @@ let selectedLogDate = null;
 init();
 
 async function init() {
-  document.getElementById('logoIcon').innerHTML = icon('check', 16, 2.5);
   settingsBtn.innerHTML = icon('settings', 18);
   await applyTheme();
   listenForThemeChanges();
@@ -83,6 +89,7 @@ function setupListeners() {
 
   quickAddBtn.addEventListener('click', () => {
     if (currentView === VIEW.LOGS) addLog();
+    else if (currentView === VIEW.REMINDERS) addReminder();
     else quickAdd();
   });
 
@@ -100,9 +107,30 @@ function setupListeners() {
       e.preventDefault();
       addLog();
     }
+    if (e.key === 'Enter' && !e.shiftKey && currentView === VIEW.REMINDERS) {
+      e.preventDefault();
+      addReminder();
+    }
   });
 
   searchInput.addEventListener('input', renderTasks);
+
+  quickAddInput.addEventListener('input', () => {
+    quickAddInput.classList.remove('invalid');
+    if (currentView !== VIEW.REMINDERS) return;
+    // Live-preview parsed phrase in the date/time/repeat pickers
+    const parsed = parseReminderInput(quickAddInput.value);
+    if (parsed.reminderAt) {
+      const d = new Date(parsed.reminderAt);
+      reminderDateInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      reminderTimeInput.value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      reminderDateInput.classList.remove('invalid');
+      reminderTimeInput.classList.remove('invalid');
+    }
+    if (parsed.repeatType) {
+      reminderRepeatInput.value = parsed.repeatType;
+    }
+  });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -129,18 +157,29 @@ function setupListeners() {
 }
 
 function toggleView() {
-  currentView = currentView === VIEW.TASKS ? VIEW.LOGS : VIEW.TASKS;
+  const cycle = [VIEW.TASKS, VIEW.LOGS, VIEW.REMINDERS];
+  const next = cycle[(cycle.indexOf(currentView) + 1) % cycle.length];
+  currentView = next;
   updateViewUI();
   scheduleComposerFocus();
 }
 
 function updateViewUI() {
   const isTasks = currentView === VIEW.TASKS;
+  const isLogs = currentView === VIEW.LOGS;
+  const isReminders = currentView === VIEW.REMINDERS;
+
   tasksPanel.classList.toggle('hidden', !isTasks);
-  logsPanel.classList.toggle('hidden', isTasks);
-  logDateSidebar.classList.toggle('hidden', isTasks);
-  viewTitle.textContent = isTasks ? 'Tasks' : 'Logs';
-  viewHint.textContent = isTasks ? 'ESC → Logs' : 'ESC → Tasks';
+  logsPanel.classList.toggle('hidden', !isLogs);
+  remindersPanel.classList.toggle('hidden', !isReminders);
+  logDateSidebar.classList.toggle('hidden', !isLogs);
+  taskTabs.classList.toggle('hidden', !isTasks);
+  reminderFields.classList.toggle('hidden', !isReminders);
+  viewHint.textContent = isTasks
+    ? 'ESC → Logs'
+    : isLogs
+      ? 'ESC → Reminders'
+      : 'ESC → Tasks';
 
   if (isTasks) {
     quickAddInput.placeholder = 'Add a task… "Call dentist tomorrow at 9am"';
@@ -148,13 +187,31 @@ function updateViewUI() {
     composerHint.textContent =
       'Natural language: tomorrow, tonight, next Monday · ⌘+Enter for log · ESC to switch';
     renderTasks();
-  } else {
+  } else if (isLogs) {
     quickAddInput.placeholder = 'Write a log entry…';
     quickAddBtn.textContent = 'Log';
-    composerHint.textContent = '⌘+Enter or Enter to post log · ESC → Tasks';
+    composerHint.textContent = '⌘+Enter or Enter to post log · ESC → Reminders';
     ensureSelectedLogDate();
     renderLogDates();
     renderLogs();
+  } else {
+    quickAddInput.placeholder = 'Remind me every day at 12:30 PM for standup…';
+    quickAddBtn.textContent = 'Add';
+    composerHint.textContent =
+      'Type naturally or pick date, time and repeat · ESC → Tasks';
+    prefillReminderFields();
+    renderReminders();
+  }
+}
+
+function prefillReminderFields() {
+  if (!reminderDateInput.value) {
+    const d = new Date();
+    reminderDateInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  if (!reminderTimeInput.value) {
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    reminderTimeInput.value = `${String(d.getHours()).padStart(2, '0')}:00`;
   }
 }
 
@@ -170,6 +227,7 @@ async function loadTasks() {
   allTasks = await getAllTasks();
   updateTabCounts();
   if (currentView === VIEW.TASKS) renderTasks();
+  if (currentView === VIEW.REMINDERS) renderReminders();
 }
 
 async function loadLogs() {
@@ -264,6 +322,105 @@ function renderTasks() {
   }
 }
 
+function renderReminders() {
+  const reminders = allTasks
+    .filter((t) => t.kind === 'reminder' && t.status === 'active')
+    .sort((a, b) => (a.reminderAt || 0) - (b.reminderAt || 0));
+
+  document.getElementById('reminderCount').textContent = reminders.length;
+
+  const hasReminders = reminders.length > 0;
+  reminderEmptyState.classList.toggle('hidden', hasReminders);
+  reminderList.classList.toggle('hidden', !hasReminders);
+  reminderList.innerHTML = '';
+
+  for (const reminder of reminders) {
+    reminderList.appendChild(createReminderCard(reminder));
+  }
+}
+
+function createReminderCard(reminder) {
+  const card = document.createElement('article');
+  card.className = 'task-card';
+
+  const when = reminder.reminderAt ? formatDateTime(reminder.reminderAt) : '';
+  const repeat = reminder.repeatType ? `↻ ${repeatLabel(reminder.repeatType)}` : 'Once';
+  const meta = when ? `${when} · ${repeat}` : repeat;
+
+  card.innerHTML = `
+    <span class="reminder-lead">${icon('bell', 16)}</span>
+    <div class="task-body">
+      <div class="task-title">${escapeHtml(reminder.title)}</div>
+      <div class="task-meta">${escapeHtml(meta)}</div>
+    </div>
+    <div class="task-actions">
+      <button class="action-btn delete-btn" title="Delete">${icon('trash', 16)}</button>
+    </div>
+  `;
+
+  card.addEventListener('click', () => openSidePanel(reminder.id));
+  card.querySelector('.delete-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteTaskById(reminder.id);
+  });
+
+  return card;
+}
+
+async function addReminder() {
+  const raw = quickAddInput.value.trim();
+  quickAddInput.classList.toggle('invalid', !raw);
+  if (!raw) return;
+
+  // Natural language first: "remind me every day at 12:30 PM for standup"
+  const parsed = parseReminderInput(raw);
+  const title = parsed.title || 'Reminder';
+  const repeatType = parsed.repeatType ?? (reminderRepeatInput.value || null);
+
+  let reminderAt = parsed.reminderAt;
+  if (!reminderAt) {
+    const dateVal = reminderDateInput.value;
+    const timeVal = reminderTimeInput.value;
+    reminderDateInput.classList.toggle('invalid', !dateVal);
+    reminderTimeInput.classList.toggle('invalid', !timeVal);
+    if (!dateVal || !timeVal) return;
+    reminderAt = new Date(`${dateVal}T${timeVal}`).getTime();
+  }
+
+  if (Number.isNaN(reminderAt)) {
+    reminderDateInput.classList.add('invalid');
+    return;
+  }
+
+  if (reminderAt <= Date.now()) {
+    if (repeatType) {
+      // Roll a repeating reminder forward to its next future occurrence
+      while (reminderAt <= Date.now()) {
+        reminderAt = nextRepeatTime(reminderAt, repeatType);
+      }
+    } else {
+      reminderTimeInput.classList.add('invalid');
+      return;
+    }
+  }
+
+  reminderDateInput.classList.remove('invalid');
+  reminderTimeInput.classList.remove('invalid');
+
+  const reminder = createTask({
+    kind: 'reminder',
+    title,
+    reminderAt,
+    repeatType,
+  });
+
+  await saveTask(reminder);
+  quickAddInput.value = '';
+  notifyChanged();
+  await loadTasks();
+  scheduleComposerFocus();
+}
+
 function renderLogs() {
   const dayLogs = logsForDate(allLogs, selectedLogDate);
   const logs = logsWithGaps(dayLogs);
@@ -326,8 +483,13 @@ function createTaskCard(task) {
     meta = meta ? `${meta} · ↻ ${repeat}` : `↻ ${repeat}`;
   }
 
+  const reopenable = currentTab === TABS.SNOOZE || currentTab === TABS.DONE;
+  const leadBtn = reopenable
+    ? `<button class="reopen-btn" title="Back to Open" aria-label="Back to Open">${icon('undo', 16)}</button>`
+    : `<button class="complete-btn" title="Complete" aria-label="Complete">${icon('circle', 18)}</button>`;
+
   card.innerHTML = `
-    <button class="complete-btn" title="Complete" aria-label="Complete">${icon('circle', 18)}</button>
+    ${leadBtn}
     <div class="task-body">
       <div class="task-title">${escapeHtml(task.title)}</div>
       ${meta ? `<div class="task-meta">${escapeHtml(meta)}</div>` : ''}
@@ -339,11 +501,18 @@ function createTaskCard(task) {
     </div>
   `;
 
-  card.querySelector('.task-body').addEventListener('click', () => openSidePanel(task.id));
-  card.querySelector('.complete-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    completeTask(task.id);
-  });
+  card.addEventListener('click', () => openSidePanel(task.id));
+  if (reopenable) {
+    card.querySelector('.reopen-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      reopenTask(task.id);
+    });
+  } else {
+    card.querySelector('.complete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      completeTask(task.id);
+    });
+  }
   card.querySelector('.snooze-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     showSnoozeMenu(e.currentTarget, task.id);
@@ -404,6 +573,16 @@ async function completeTask(id) {
   const task = allTasks.find((t) => t.id === id);
   if (!task) return;
   task.status = 'completed';
+  task.snoozedUntil = null;
+  await saveTask(task);
+  notifyChanged();
+  await loadTasks();
+}
+
+async function reopenTask(id) {
+  const task = allTasks.find((t) => t.id === id);
+  if (!task) return;
+  task.status = 'active';
   task.snoozedUntil = null;
   await saveTask(task);
   notifyChanged();

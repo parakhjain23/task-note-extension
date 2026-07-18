@@ -68,6 +68,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
+  console.log('Alarm fired:', alarm.name, 'at', new Date(alarm.scheduledTime));
   if (alarm.name.startsWith('snooze-')) {
     const taskId = alarm.name.slice('snooze-'.length);
     await handleSnoozeExpired(taskId);
@@ -78,7 +79,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 chrome.notifications.onClicked.addListener(async (notificationId) => {
-  const taskId = notificationId.replace(/^task-/, '');
+  const taskId = notificationId.replace(/^task-/, '').replace(/-\d+$/, '');
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const windowId = tabs[0]?.windowId;
   await chrome.storage.session.set({ sidePanelTaskId: taskId });
@@ -88,7 +89,7 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
 });
 
 chrome.notifications.onButtonClicked.addListener(async (notificationId, buttonIndex) => {
-  const taskId = notificationId.replace(/^task-/, '');
+  const taskId = notificationId.replace(/^task-/, '').replace(/-\d+$/, '');
   const task = await getTask(taskId);
   if (!task) return;
 
@@ -121,33 +122,53 @@ async function handleReminderDue(taskId) {
   if (!task || task.status !== 'active' || isSnoozed(task)) return;
 
   await showNotification(task, 'Reminder');
+  task.lastNotifiedReminderAt = task.reminderAt;
 
   if (task.repeatType && task.reminderAt) {
-    task.reminderAt = nextRepeatTime(task.reminderAt, task.repeatType);
+    // Advance past every missed occurrence so the next alarm lands in the future
+    let next = nextRepeatTime(task.reminderAt, task.repeatType);
+    while (next <= Date.now()) {
+      next = nextRepeatTime(next, task.repeatType);
+    }
+    task.reminderAt = next;
     await saveTask(task);
     await scheduleReminder(task);
     chrome.runtime.sendMessage({ type: 'TASKS_CHANGED' }).catch(() => {});
+  } else {
+    await saveTask(task);
   }
 }
 
 async function showNotification(task, prefix) {
   const settings = await getSettings();
   if (!settings.notificationsEnabled) return;
-
+  console.log('Showing notification for task:', task.title, 'prefix:', prefix);
   const message = task.notes?.trim() || 'Tap to open task';
+  const title = `${prefix}: ${task.title}`;
+  console.log('Notification title:', title, 'message:', message);
 
-  await chrome.notifications.create(`task-${task.id}`, {
-    type: 'basic',
-    iconUrl: chrome.runtime.getURL('images/icon-128.png'),
-    title: `${prefix}: ${task.title}`,
-    message,
-    buttons: [
-      { title: 'Snooze 1 Day' },
-      { title: 'Complete' },
-    ],
-    requireInteraction: true,
-    priority: 2,
-  });
+  // Use timestamp in ID to avoid collisions
+  const notificationId = `task-${task.id}-${Date.now()}`;
+
+  try {
+    // No requireInteraction: on macOS it routes through Chrome's separate
+    // "Alerts" helper, which is often blocked in System Settings and makes
+    // notifications silently not display. Banners always show.
+    const createdId = await chrome.notifications.create(notificationId, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('images/icon-128.png'),
+      title,
+      message,
+      buttons: [
+        { title: 'Snooze 1 Day' },
+        { title: 'Complete' },
+      ],
+      priority: 2,
+    });
+    console.log('Notification created:', createdId);
+  } catch (err) {
+    console.error('Notification failed:', err);
+  }
 }
 
 async function snoozeTask(task, ms) {
@@ -198,6 +219,16 @@ async function syncAllAlarms() {
     if (task.reminderAt && task.reminderAt > Date.now() && !isSnoozed(task)) {
       needed.add(reminderAlarmName(task.id));
       await scheduleReminder(task);
+    } else if (
+      task.reminderAt &&
+      task.reminderAt <= Date.now() &&
+      !isSnoozed(task) &&
+      task.reminderAt !== task.lastNotifiedReminderAt
+    ) {
+      // Reminder time passed while the browser was closed or the alarm was
+      // lost — fire the missed notification now (repeats reschedule inside)
+      await handleReminderDue(task.id);
+      if (task.repeatType) needed.add(reminderAlarmName(task.id));
     }
   }
 
