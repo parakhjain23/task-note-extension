@@ -5,7 +5,7 @@
   "description": "Personal task and reminder manager with new tab task board and side panel editor",
   "permissions": ["alarms", "notifications", "storage", "sidePanel", "identity", "tabs"],
   "oauth2": {
-    "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "client_id": "538866180727-btc3998j3fk44n63flm342b7f0dc6kl0.apps.googleusercontent.com",
     "scopes": ["https://www.googleapis.com/auth/drive.file"]
   },
   "action": {

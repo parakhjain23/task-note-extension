@@ -7,12 +7,15 @@ import {
   createLog,
   saveLog,
   deleteLog,
+  getSettings,
 } from './lib/db.js';
 import {
   DEFAULT_SNOOZE_MS,
   SNOOZE_PRESETS,
   VIEW,
 } from './lib/constants.js';
+import { createNotesWorkspace } from './lib/notes-workspace.js';
+import { createCommandPalette } from './lib/command-palette.js';
 import {
   formatDateTime,
   formatRelativeTime,
@@ -21,7 +24,6 @@ import {
 import { parseTaskInput, parseReminderInput } from './lib/nlp-parser.js';
 import { repeatLabel, nextRepeatTime } from './lib/repeat.js';
 import { TABS, filterTasksByTab, countByTab } from './lib/task-tabs.js';
-import { applyTheme, listenForThemeChanges } from './lib/theme.js';
 import { icon } from './lib/icons.js';
 import { logsWithGaps, formatLogDuration, uniqueLogDates, formatLogDateLabel, logsForDate, logDateKey } from './lib/log-utils.js';
 
@@ -48,30 +50,80 @@ const viewHint = document.getElementById('viewHint');
 const composerHint = document.getElementById('composerHint');
 const settingsBtn = document.getElementById('settingsBtn');
 const snoozeMenu = document.getElementById('snoozeMenu');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsFrame = document.getElementById('settingsFrame');
+const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+const newtabStage = document.querySelector('.newtab-stage');
+const notesPane = document.getElementById('notesPane');
 
 let allTasks = [];
 let allLogs = [];
 let currentTab = TABS.OPEN;
 let currentView = VIEW.TASKS;
 let selectedLogDate = null;
+let features = { logs: true, reminders: true, notes: false };
+let notesWorkspace = null;
+let palette = null;
 
 init();
 
 async function init() {
   settingsBtn.innerHTML = icon('settings', 18);
-  await applyTheme();
-  listenForThemeChanges();
+  settingsCloseBtn.innerHTML = icon('x', 18);
+  const settings = await getSettings();
+  features = { ...features, ...(settings.features || {}) };
+
+  palette = createCommandPalette({
+    notesEnabled: () => features.notes,
+    onSelectTask: (id) => openSidePanel(id),
+    onSelectNote: (id) => notesWorkspace?.openNote(id),
+  });
+
   await Promise.all([loadTasks(), loadLogs()]);
   setupListeners();
-  updateViewUI();
+  await applyFeatures();
   requestSnoozeSync();
   scheduleComposerFocus();
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'TASKS_CHANGED') {
       loadTasks();
       loadLogs();
+    } else if (msg.type === 'FEATURES_CHANGED') {
+      refreshFeatures();
     }
   });
+}
+
+function enabledViews() {
+  const views = [VIEW.TASKS];
+  if (features.logs) views.push(VIEW.LOGS);
+  if (features.reminders) views.push(VIEW.REMINDERS);
+  return views;
+}
+
+async function refreshFeatures() {
+  const settings = await getSettings();
+  features = { ...features, ...(settings.features || {}) };
+  await applyFeatures();
+}
+
+async function applyFeatures() {
+  const notesOn = !!features.notes;
+  newtabStage.classList.toggle('notes-enabled', notesOn);
+  notesPane.classList.toggle('hidden', !notesOn);
+
+  if (notesOn) {
+    if (!notesWorkspace) {
+      notesWorkspace = createNotesWorkspace();
+    }
+    await notesWorkspace.open();
+  }
+
+  // If the active view was just disabled, fall back to Tasks.
+  if (!enabledViews().includes(currentView)) {
+    currentView = VIEW.TASKS;
+  }
+  updateViewUI();
 }
 
 function requestSnoozeSync() {
@@ -96,7 +148,7 @@ function setupListeners() {
   quickAddInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
-      addLog();
+      if (features.logs) addLog();
       return;
     }
     if (e.key === 'Enter' && !e.shiftKey && currentView === VIEW.TASKS) {
@@ -133,14 +185,31 @@ function setupListeners() {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
       e.preventDefault();
+      palette?.toggle();
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (palette?.isOpen()) {
+        e.preventDefault();
+        palette.close();
+        scheduleComposerFocus();
+        return;
+      }
+      e.preventDefault();
+      if (!settingsOverlay.classList.contains('hidden')) {
+        closeSettings();
+        return;
+      }
       toggleView();
     }
   });
 
-  settingsBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('settings.html') });
+  settingsBtn.addEventListener('click', openSettings);
+  settingsCloseBtn.addEventListener('click', closeSettings);
+  settingsOverlay.addEventListener('click', (e) => {
+    if (e.target === settingsOverlay) closeSettings();
   });
 
   document.addEventListener('click', (e) => {
@@ -157,10 +226,23 @@ function setupListeners() {
 }
 
 function toggleView() {
-  const cycle = [VIEW.TASKS, VIEW.LOGS, VIEW.REMINDERS];
-  const next = cycle[(cycle.indexOf(currentView) + 1) % cycle.length];
-  currentView = next;
+  const cycle = enabledViews();
+  if (cycle.length < 2) return;
+  const idx = cycle.indexOf(currentView);
+  currentView = cycle[(idx + 1) % cycle.length];
   updateViewUI();
+  scheduleComposerFocus();
+}
+
+function openSettings() {
+  if (!settingsFrame.src) {
+    settingsFrame.src = chrome.runtime.getURL('settings.html');
+  }
+  settingsOverlay.classList.remove('hidden');
+}
+
+function closeSettings() {
+  settingsOverlay.classList.add('hidden');
   scheduleComposerFocus();
 }
 
@@ -175,11 +257,16 @@ function updateViewUI() {
   logDateSidebar.classList.toggle('hidden', !isLogs);
   taskTabs.classList.toggle('hidden', !isTasks);
   reminderFields.classList.toggle('hidden', !isReminders);
-  viewHint.textContent = isTasks
-    ? 'ESC → Logs'
-    : isLogs
-      ? 'ESC → Reminders'
-      : 'ESC → Tasks';
+
+  const views = enabledViews();
+  if (views.length < 2) {
+    viewHint.classList.add('hidden');
+  } else {
+    viewHint.classList.remove('hidden');
+    const labels = { [VIEW.TASKS]: 'Tasks', [VIEW.LOGS]: 'Logs', [VIEW.REMINDERS]: 'Reminders' };
+    const next = views[(views.indexOf(currentView) + 1) % views.length];
+    viewHint.textContent = `ESC → ${labels[next]}`;
+  }
 
   if (isTasks) {
     quickAddInput.placeholder = 'Add a task… "Call dentist tomorrow at 9am"';

@@ -4,7 +4,6 @@ import {
   saveTask,
   getSettings,
   saveSettings,
-  exportData,
   importData,
 } from './lib/db.js';
 import {
@@ -14,13 +13,10 @@ import {
 } from './lib/constants.js';
 import { isVisible, activeTaskCount, isSnoozed } from './lib/utils.js';
 import { nextRepeatTime } from './lib/repeat.js';
-import { pushBackup, isOAuthConfigured } from './lib/drive-sync.js';
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 
 const TASKS_URL = chrome.runtime.getURL('index.html');
-
-let driveSyncTimer = null;
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   await syncAllAlarms();
@@ -50,7 +46,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'TASKS_CHANGED') {
     syncAllAlarms()
       .then(() => updateBadge())
-      .then(() => scheduleDriveSync())
       .then(() => sendResponse({ ok: true }));
     return true;
   }
@@ -253,18 +248,3 @@ async function updateBadge() {
   await chrome.action.setBadgeBackgroundColor({ color: '#059669' });
 }
 
-async function scheduleDriveSync() {
-  const settings = await getSettings();
-  if (!settings.driveSyncEnabled || !isOAuthConfigured()) return;
-
-  clearTimeout(driveSyncTimer);
-  driveSyncTimer = setTimeout(async () => {
-    try {
-      const data = await exportData();
-      await pushBackup(data);
-      await saveSettings({ ...settings, driveLastSyncAt: Date.now() });
-    } catch {
-      // silent fail for background auto-sync
-    }
-  }, 5000);
-}

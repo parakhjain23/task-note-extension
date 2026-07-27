@@ -3,6 +3,13 @@
   "version": "1.3.0",
   "private": true,
   "scripts": {
-    "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./styles/tailwind.css --minify"
+    "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./styles/tailwind.css --minify",
+    "build:editor": "npx --yes esbuild@0.24.0 vendor/tiptap/_entry.js --bundle --format=esm --minify --outfile=vendor/tiptap/tiptap.mjs"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.29.1",
+    "@tiptap/extensions": "^3.29.1",
+    "@tiptap/pm": "^3.29.1",
+    "@tiptap/starter-kit": "^3.29.1"
   }
 }

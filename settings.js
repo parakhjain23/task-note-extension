@@ -1,5 +1,4 @@
 import { getSettings, saveSettings, exportData, importData } from './lib/db.js';
-import { applyTheme, setDarkMode, listenForThemeChanges } from './lib/theme.js';
 import {
   pushBackup,
   pullBackup,
@@ -8,12 +7,13 @@ import {
   isOAuthConfigured,
 } from './lib/drive-sync.js';
 import { formatDateTime } from './lib/utils.js';
-import { icon } from './lib/icons.js';
-import { icon } from './lib/icons.js';
+import { FEATURES } from './lib/constants.js';
 
-const darkMode = document.getElementById('darkMode');
-const notificationsEnabled = document.getElementById('notificationsEnabled');
-const driveSyncEnabled = document.getElementById('driveSyncEnabled');
+const featureInputs = {
+  logs: document.getElementById('featureLogs'),
+  reminders: document.getElementById('featureReminders'),
+  notes: document.getElementById('featureNotes'),
+};
 const driveConnectBtn = document.getElementById('driveConnectBtn');
 const drivePushBtn = document.getElementById('drivePushBtn');
 const drivePullBtn = document.getElementById('drivePullBtn');
@@ -29,39 +29,17 @@ const statusMsg = document.getElementById('statusMsg');
 init();
 
 async function init() {
-  const logoEl = document.getElementById('logoIcon');
-  if (logoEl) logoEl.innerHTML = icon('check', 16, 2.5);
-  await applyTheme();
-  listenForThemeChanges();
-
   const settings = await getSettings();
-  darkMode.checked = settings.darkMode;
-  notificationsEnabled.checked = settings.notificationsEnabled;
-  driveSyncEnabled.checked = settings.driveSyncEnabled;
+
+  for (const key of FEATURES) {
+    const input = featureInputs[key];
+    if (!input) continue;
+    input.checked = !!settings.features?.[key];
+    input.addEventListener('change', () => saveFeature(key, input.checked));
+  }
 
   updateDriveLastSync(settings.driveLastSyncAt);
   await refreshDriveStatus();
-
-  darkMode.addEventListener('change', () => setDarkMode(darkMode.checked));
-
-  notificationsEnabled.addEventListener('change', async () => {
-    const current = await getSettings();
-    await saveSettings({
-      ...current,
-      notificationsEnabled: notificationsEnabled.checked,
-    });
-    showStatus('Settings saved');
-    chrome.runtime.sendMessage({ type: 'TASKS_CHANGED' });
-  });
-
-  driveSyncEnabled.addEventListener('change', async () => {
-    const current = await getSettings();
-    await saveSettings({
-      ...current,
-      driveSyncEnabled: driveSyncEnabled.checked,
-    });
-    showStatus('Auto-sync ' + (driveSyncEnabled.checked ? 'enabled' : 'disabled'));
-  });
 
   driveConnectBtn.addEventListener('click', connectDrive);
   drivePushBtn.addEventListener('click', pushToDrive);
@@ -72,6 +50,14 @@ async function init() {
   importMergeBtn.addEventListener('click', () => openImport('merge'));
   importReplaceBtn.addEventListener('click', () => openImport('replace'));
   importFile.addEventListener('change', handleImport);
+}
+
+async function saveFeature(key, enabled) {
+  const current = await getSettings();
+  const features = { ...current.features, [key]: enabled };
+  await saveSettings({ ...current, features });
+  showStatus(`${key.charAt(0).toUpperCase() + key.slice(1)} ${enabled ? 'enabled' : 'disabled'}`);
+  chrome.runtime.sendMessage({ type: 'FEATURES_CHANGED' });
 }
 
 async function refreshDriveStatus() {

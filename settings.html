@@ -7,37 +7,27 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="settings-body">
-  <header class="header settings-header">
-    <div class="header-title">
-      <span class="logo" id="logoIcon"></span>
-      <h1>Settings</h1>
-    </div>
-  </header>
-
   <section class="settings-section">
-    <h2>Appearance</h2>
+    <h2>Features</h2>
+    <p>Enable the panels you want. Tasks are always on.</p>
     <div class="toggle-row">
-      <label for="darkMode">Dark mode</label>
-      <input type="checkbox" id="darkMode">
+      <label for="featureLogs">Logs</label>
+      <input type="checkbox" id="featureLogs">
     </div>
-  </section>
-
-  <section class="settings-section">
-    <h2>Notifications</h2>
     <div class="toggle-row">
-      <label for="notificationsEnabled">Browser notifications</label>
-      <input type="checkbox" id="notificationsEnabled">
+      <label for="featureReminders">Reminders</label>
+      <input type="checkbox" id="featureReminders">
+    </div>
+    <div class="toggle-row">
+      <label for="featureNotes">Notes <span class="meta-hint">— adds a split notes workspace</span></label>
+      <input type="checkbox" id="featureNotes">
     </div>
   </section>
 
   <section class="settings-section">
     <h2>Google Drive Sync</h2>
-    <p>Back up tasks to your Google Drive app folder and restore them on another computer. Requires OAuth setup — see README.</p>
+    <p>Back up tasks to your Google Drive app folder and restore them on another computer. Uses the Google account you're signed into in this browser.</p>
     <div id="driveStatus" class="drive-status">Checking connection…</div>
-    <div class="toggle-row">
-      <label for="driveSyncEnabled">Auto-sync on changes</label>
-      <input type="checkbox" id="driveSyncEnabled">
-    </div>
     <div class="settings-actions">
       <button id="driveConnectBtn" class="btn btn-primary">Connect Google Drive</button>
       <button id="drivePushBtn" class="btn btn-secondary">Push to Drive</button>

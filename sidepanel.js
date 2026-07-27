@@ -4,9 +4,8 @@ import {
   SNOOZE_PRESETS,
 } from './lib/constants.js';
 import { formatDateTime, isSnoozed } from './lib/utils.js';
-import { applyTheme, listenForThemeChanges } from './lib/theme.js';
-import { editorDataToString } from './lib/editor-helper.js';
-import { initEditor, destroyEditor, flushEditor } from './lib/editor.js';
+import { descriptionToHtml } from './lib/editor-helper.js';
+import { createRichEditor } from './lib/rich-editor.js';
 import { icon } from './lib/icons.js';
 
 const panelTitle = document.getElementById('panelTitle');
@@ -21,14 +20,13 @@ const fields = ['title', 'status', 'priority', 'reminderDate', 'reminderTime', '
 
 let currentTask = null;
 let saveTimer = null;
+let descEditor = null;
 
 init();
 
 async function init() {
   backBtn.innerHTML = icon('arrowLeft', 18);
   closePanelBtn.innerHTML = icon('x', 18);
-  await applyTheme();
-  listenForThemeChanges();
   await loadTaskFromSession();
   setupListeners();
   setupSnoozePicker();
@@ -96,11 +94,21 @@ async function populateForm(task) {
   taskMeta.textContent =
     `Created ${formatDateTime(task.createdAt)} · Updated ${formatDateTime(task.updatedAt)}`;
 
-  await initEditor('editorHolder', task.description, async (data) => {
-    if (!currentTask) return;
-    currentTask.description = editorDataToString(data);
-    await saveTask(currentTask);
-    notifyChanged();
+  if (descEditor) {
+    descEditor.destroy();
+    descEditor = null;
+  }
+  const holder = document.getElementById('editorHolder');
+  holder.innerHTML = '';
+  descEditor = createRichEditor(holder, {
+    content: descriptionToHtml(task.description),
+    placeholder: 'Write a description, user story, or notes…',
+    onChange: async (html) => {
+      if (!currentTask) return;
+      currentTask.description = html;
+      await saveTask(currentTask);
+      notifyChanged();
+    },
   });
 }
 
@@ -111,7 +119,7 @@ function scheduleSave() {
 
 async function saveTaskFields() {
   if (!currentTask) return;
-  await flushEditor();
+  descEditor?.flush();
 
   currentTask.title = document.getElementById('title').value.trim();
   currentTask.priority = document.getElementById('priority').value;
@@ -192,7 +200,8 @@ async function completeTask() {
 
 async function deleteCurrentTask() {
   if (!currentTask) return;
-  await destroyEditor();
+  descEditor?.destroy();
+  descEditor = null;
   await deleteTask(currentTask.id);
   currentTask = null;
   notifyChanged();
