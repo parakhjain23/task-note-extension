@@ -9,6 +9,8 @@
   --danger: #dc2626;
   --danger-bg: #fef2f2;
   --danger-border: #fecaca;
+  --link: #2563eb;
+  --link-hover: #1d4ed8;
   --priority-high: #ef4444;
   --priority-medium: #f59e0b;
   --priority-low: #94a3b8;
@@ -25,19 +27,23 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f172a;
-    --surface: #1e293b;
-    --border: #334155;
-    --text: #f1f5f9;
-    --text-muted: #94a3b8;
+    --bg: #171717;
+    --surface: #262626;
+    --border: #404040;
+    --text: #f5f5f5;
+    --text-muted: #a3a3a3;
     --primary: #10b981;
     --primary-hover: #059669;
     --danger: #f87171;
-    --danger-bg: #450a0a;
+    --danger-bg: #401b1b;
     --danger-border: #7f1d1d;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    --input-bg: #0f172a;
-    --tag-bg: #334155;
+    --input-bg: #1f1f1f;
+    --tag-bg: #333333;
+    --priority-low: #a3a3a3;
+    /* Emerald, matching --primary; the light-theme blue is too dark on #262626. */
+    --link: #10b981;
+    --link-hover: #34d399;
   }
 }
 
@@ -618,14 +624,24 @@ body {
   opacity: 0.6;
 }
 
-h2.ce-header, h3.ce-header, h4.ce-header {
+h2.ce-header,
+h3.ce-header,
+h4.ce-header {
   color: var(--text);
   font-weight: 600;
 }
 
-h2.ce-header { font-size: 1.25rem; }
-h3.ce-header { font-size: 1.1rem; }
-h4.ce-header { font-size: 1rem; }
+h2.ce-header {
+  font-size: 1.25rem;
+}
+
+h3.ce-header {
+  font-size: 1.1rem;
+}
+
+h4.ce-header {
+  font-size: 1rem;
+}
 
 .settings-body {
   min-height: 100vh;
@@ -1223,6 +1239,16 @@ h4.ce-header { font-size: 1rem; }
   visibility: hidden;
 }
 
+.note-back-btn {
+  flex-shrink: 0;
+  margin-left: -4px;
+}
+
+/* Nothing to go back to once the list is already showing. */
+.notes-pane.list-mode .note-back-btn {
+  display: none;
+}
+
 .notes-header-actions {
   display: flex;
   align-items: center;
@@ -1260,7 +1286,15 @@ h4.ce-header { font-size: 1rem; }
   outline: none;
 }
 
-.ProseMirror > * + * {
+/* Notes get a monospace face and a slightly larger reading size than the
+   task-description editor. */
+.note-editor-holder .ProseMirror {
+  /* font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; */
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.ProseMirror>*+* {
   margin-top: 0.6em;
 }
 
@@ -1280,6 +1314,111 @@ h4.ce-header { font-size: 1rem; }
 .ProseMirror ul,
 .ProseMirror ol {
   padding-left: 1.3em;
+}
+
+/* The global `* { margin: 0; padding: 0 }` reset strips list markers, so set
+   list styling back explicitly. */
+.ProseMirror ul {
+  list-style: disc outside;
+}
+
+.ProseMirror ul ul {
+  list-style: circle outside;
+}
+
+.ProseMirror ul ul ul {
+  list-style: square outside;
+}
+
+.ProseMirror ol {
+  list-style: decimal outside;
+}
+
+.ProseMirror ol ol {
+  list-style: lower-alpha outside;
+}
+
+.ProseMirror ol ol ol {
+  list-style: lower-roman outside;
+}
+
+.ProseMirror li {
+  display: list-item;
+}
+
+.ProseMirror li>p {
+  margin: 0;
+}
+
+.ProseMirror li+li {
+  margin-top: 0.2em;
+}
+
+/* Checklists (TaskList / TaskItem) */
+.ProseMirror ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.ProseMirror ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ProseMirror ul[data-type='taskList'] li>label {
+  flex-shrink: 0;
+  /* Nudge the box onto the first line's optical centre. */
+  margin-top: 0.3em;
+  user-select: none;
+}
+
+.ProseMirror ul[data-type='taskList'] li>div {
+  flex: 1;
+  min-width: 0;
+}
+
+.ProseMirror ul[data-type='taskList'] input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* Dim only the item's own text, not nested children. */
+.ProseMirror ul[data-type='taskList'] li[data-checked='true']>div>p {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.ProseMirror ul[data-type='taskList'] ul[data-type='taskList'] {
+  margin-top: 0.2em;
+  padding-left: 1.4em;
+}
+
+/* Links. Without this they inherit `--text` and are indistinguishable from
+   body copy — badly so in dark mode, where `--text` is near-white. */
+.ProseMirror a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ProseMirror a:hover {
+  color: var(--link-hover);
+  text-decoration-color: currentColor;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
+
+.ProseMirror hr.ProseMirror-selectednode {
+  border-top-color: var(--primary);
 }
 
 .ProseMirror blockquote {
@@ -1308,6 +1447,52 @@ h4.ce-header { font-size: 1rem; }
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* ── "/" block menu ───────────────────────────────────────────── */
+.slash-menu {
+  position: fixed;
+  z-index: 130;
+  width: 260px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.slash-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.slash-menu-item.active {
+  background: var(--tag-bg);
+}
+
+.slash-menu-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.slash-menu-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.3;
 }
 
 /* Notes card grid */
@@ -1365,6 +1550,8 @@ h4.ce-header { font-size: 1rem; }
   transform: scale(0.4);
   transform-origin: top left;
   padding: 12px 16px;
+  /* Match the notes editor so previews look like what they preview. */
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
@@ -1381,6 +1568,59 @@ h4.ce-header { font-size: 1rem; }
 .note-card-thumb-inner ul,
 .note-card-thumb-inner ol {
   padding-left: 1.2em;
+}
+
+/* Thumbnails render stored note HTML directly, so they need the same marker
+   and link treatment the editor surface gets. */
+.note-card-thumb-inner ul {
+  list-style: disc outside;
+}
+
+.note-card-thumb-inner ol {
+  list-style: decimal outside;
+}
+
+.note-card-thumb-inner li {
+  display: list-item;
+}
+
+.note-card-thumb-inner ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.note-card-thumb-inner ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.note-card-thumb-inner ul[data-type='taskList'] input[type='checkbox'] {
+  accent-color: var(--primary);
+  margin-top: 0.3em;
+}
+
+.note-card-thumb-inner a {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+.note-card-thumb-inner blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 10px;
+  color: var(--text-muted);
+}
+
+.note-card-thumb-inner code {
+  background: var(--tag-bg);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.note-card-thumb-inner hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.6em 0;
 }
 
 .note-card-empty {
