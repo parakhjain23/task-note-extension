@@ -93,6 +93,7 @@ chrome.notifications.onButtonClicked.addListener(async (notificationId, buttonIn
   } else if (buttonIndex === 1) {
     task.status = 'completed';
     task.snoozedUntil = null;
+    task.completedAt = Date.now();
     await saveTask(task);
     await clearTaskAlarms(taskId);
     await updateBadge();

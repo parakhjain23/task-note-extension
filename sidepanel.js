@@ -143,6 +143,9 @@ async function saveTaskFields() {
 
   if (currentTask.status === 'completed') {
     currentTask.snoozedUntil = null;
+    if (!currentTask.completedAt) currentTask.completedAt = Date.now();
+  } else {
+    currentTask.completedAt = null;
   }
 
   await saveTask(currentTask);
@@ -175,6 +178,7 @@ async function applySnooze(ms) {
   if (!currentTask) return;
   currentTask.snoozedUntil = Date.now() + ms;
   currentTask.status = 'active';
+  currentTask.completedAt = null;
   await saveTask(currentTask);
   snoozePicker.classList.add('hidden');
   await populateForm(currentTask);
@@ -193,6 +197,7 @@ async function completeTask() {
   if (!currentTask) return;
   currentTask.status = 'completed';
   currentTask.snoozedUntil = null;
+  currentTask.completedAt = Date.now();
   await saveTask(currentTask);
   notifyChanged();
   window.close();

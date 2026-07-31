@@ -404,8 +404,38 @@ function renderTasks() {
   taskList.classList.toggle('hidden', !hasTasks);
   taskList.innerHTML = '';
 
+  if (currentTab === TABS.DONE) {
+    renderDoneGroups(tasks);
+    return;
+  }
+
   for (const task of tasks) {
     taskList.appendChild(createTaskCard(task));
+  }
+}
+
+function renderDoneGroups(tasks) {
+  const doneTime = (t) => t.completedAt || t.updatedAt || t.createdAt;
+  const groups = new Map();
+  for (const task of tasks) {
+    const key = logDateKey(doneTime(task));
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(task);
+  }
+
+  const dateKeys = [...groups.keys()].sort((a, b) => b.localeCompare(a));
+  for (const dateKey of dateKeys) {
+    const items = groups.get(dateKey).sort((a, b) => doneTime(b) - doneTime(a));
+    const section = document.createElement('section');
+    section.className = 'section';
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    title.innerHTML = `${escapeHtml(formatLogDateLabel(dateKey))} <span class="count">${items.length}</span>`;
+    section.appendChild(title);
+    for (const task of items) {
+      section.appendChild(createTaskCard(task));
+    }
+    taskList.appendChild(section);
   }
 }
 
@@ -661,6 +691,7 @@ async function completeTask(id) {
   if (!task) return;
   task.status = 'completed';
   task.snoozedUntil = null;
+  task.completedAt = Date.now();
   await saveTask(task);
   notifyChanged();
   await loadTasks();
@@ -671,6 +702,7 @@ async function reopenTask(id) {
   if (!task) return;
   task.status = 'active';
   task.snoozedUntil = null;
+  task.completedAt = null;
   await saveTask(task);
   notifyChanged();
   await loadTasks();
