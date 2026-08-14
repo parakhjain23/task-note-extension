@@ -17,4 +17,6 @@ import { TableKit } from '@tiptap/extension-table';
 // Highlight mark: "==text==" in markdown, <mark> in HTML, and (via the
 // parseHTML extension in rich-editor.js) Google Docs background-color spans.
 import { Highlight } from '@tiptap/extension-highlight';
-export { StarterKit, Placeholder, TaskList, TaskItem, Suggestion, Markdown, TableKit, Highlight };
+// Images: pasted/dropped files are inlined as data URIs (see editor-images.js).
+import { Image } from '@tiptap/extension-image';
+export { StarterKit, Placeholder, TaskList, TaskItem, Suggestion, Markdown, TableKit, Highlight, Image };

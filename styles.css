@@ -1445,6 +1445,65 @@ h4.ce-header {
   overflow-x: auto;
 }
 
+/* Images (pasted, dropped, or inserted via the "/" menu). */
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+}
+
+/* Node-view wrapper: hosts the resize handle, hugs the image's width. */
+.ProseMirror .image-resizer {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  cursor: zoom-in;
+}
+
+.ProseMirror .image-resizer.selected img {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.ProseMirror .image-resize-handle {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--surface);
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ProseMirror .image-resizer:hover .image-resize-handle,
+.ProseMirror .image-resizer.selected .image-resize-handle {
+  opacity: 1;
+}
+
+/* Fullscreen preview on double-click. */
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  cursor: zoom-out;
+}
+
+.image-lightbox img {
+  max-width: 94vw;
+  max-height: 94vh;
+  border-radius: 8px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
 /* Highlight mark (==text== / pasted Docs highlights). The browser default
    (opaque yellow + black text) is unreadable in dark mode; a translucent
    amber wash keeps the theme's text color in both schemes. */
