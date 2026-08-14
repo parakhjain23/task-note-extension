@@ -1445,6 +1445,52 @@ h4.ce-header {
   overflow-x: auto;
 }
 
+/* Highlight mark (==text== / pasted Docs highlights). The browser default
+   (opaque yellow + black text) is unreadable in dark mode; a translucent
+   amber wash keeps the theme's text color in both schemes. */
+.ProseMirror mark {
+  background: color-mix(in srgb, #fbbf24 38%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+/* Tables (pasted from Google Docs / markdown). The wrapper scrolls so wide
+   tables never stretch the note layout. */
+.ProseMirror .tableWrapper {
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  vertical-align: top;
+  text-align: left;
+  min-width: 60px;
+}
+
+.ProseMirror th {
+  background: var(--tag-bg);
+  font-weight: 600;
+}
+
+.ProseMirror th>p,
+.ProseMirror td>p {
+  margin: 0;
+}
+
+.ProseMirror .selectedCell {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
 .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: var(--text-muted);
