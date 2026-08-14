@@ -1504,6 +1504,40 @@ h4.ce-header {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
+/* Website/video embeds (slash-menu "Embed"). 16:9 keeps video players
+   proportional; websites just get a viewport-shaped window. */
+.ProseMirror iframe.note-embed {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  margin: 0.75em 0;
+}
+
+/* Node-view wrapper: hosts the resize handle (shared with images). */
+.ProseMirror .embed-resizer {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  margin: 0.75em 0;
+}
+
+.ProseMirror .embed-resizer iframe.note-embed {
+  margin: 0;
+}
+
+.ProseMirror .embed-resizer.selected iframe.note-embed {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.ProseMirror .embed-resizer:hover .image-resize-handle,
+.ProseMirror .embed-resizer.selected .image-resize-handle {
+  opacity: 1;
+}
+
 /* Highlight mark (==text== / pasted Docs highlights). The browser default
    (opaque yellow + black text) is unreadable in dark mode; a translucent
    amber wash keeps the theme's text color in both schemes. */
