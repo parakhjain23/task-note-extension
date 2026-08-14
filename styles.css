@@ -905,6 +905,7 @@ h4.ce-header {
   padding: 10px 14px;
   border: none;
   background: none;
+  color: var(--text);
   font: inherit;
   cursor: pointer;
 }
