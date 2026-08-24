@@ -547,9 +547,9 @@ body {
 }
 
 .tab-btn.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
+  background: transparent;
+  border-color: var(--text);
+  color: var(--text);
 }
 
 .tab-count {
@@ -562,8 +562,8 @@ body {
 }
 
 .tab-btn.active .tab-count {
-  background: rgba(255, 255, 255, 0.22);
-  color: white;
+  background: var(--text);
+  color: var(--surface);
 }
 
 /* Editor.js — theme aware */
@@ -941,12 +941,13 @@ h4.ce-header {
 }
 
 .btn-primary {
-  background: var(--primary);
-  color: white;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--text);
 }
 
 .btn-primary:hover {
-  background: var(--primary-hover);
+  background: var(--bg);
 }
 
 .btn-secondary {
