@@ -3,8 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Reminder</title>
+  <title>Task Reminder — Preview</title>
   <link rel="stylesheet" href="styles.css">
+  <!-- Minimal chrome.* stub so the extension runs outside Chrome (preview only). -->
+  <script>
+    window.chrome = {
+      runtime: {
+        onMessage: { addListener() {} },
+        onInstalled: { addListener() {} },
+        onStartup: { addListener() {} },
+        sendMessage: () => Promise.resolve(),
+        getURL: (p) => p,
+        getManifest: () => ({ oauth2: { client_id: '', scopes: [] } }),
+        lastError: null,
+      },
+      storage: {
+        session: { get: async () => ({}), set: async () => {} },
+        local: { get: async () => ({}), set: async () => {} },
+        onChanged: { addListener() {} },
+      },
+      windows: { getCurrent: async () => ({ id: 1 }), update: async () => {} },
+      tabs: { query: async () => [], create: async () => {}, update: async () => {} },
+      sidePanel: { open: async () => {}, setPanelBehavior: async () => {} },
+      alarms: { create() {}, clear() {}, getAll: async () => [], onAlarm: { addListener() {} } },
+      action: { setBadgeText() {}, setBadgeBackgroundColor() {}, onClicked: { addListener() {} } },
+      notifications: { create() {}, onClicked: { addListener() {} }, onButtonClicked: { addListener() {} } },
+      identity: { getAuthToken() {}, removeCachedAuthToken() {} },
+    };
+  </script>
 </head>
 <body class="newtab-body">
   <div class="newtab-stage">
@@ -124,7 +150,32 @@
     </div>
   </div>
 
-  <script src="focus-composer.js"></script>
-  <script type="module" src="index.js"></script>
+  <!-- Seed a few demo logs, then boot the real app modules. -->
+  <script type="module">
+    import { createLog, saveLog, getAllLogs, getSettings, saveSettings } from './lib/db.js';
+    // Enable the notes feature so the 40/60 split + notes pane render in preview.
+    const settings = await getSettings();
+    await saveSettings({ ...settings, features: { ...settings.features, notes: true } });
+    const existing = await getAllLogs();
+    if (!existing.length) {
+      const HOUR = 3600 * 1000, DAY = 24 * HOUR;
+      // Fixed base time (no Date.now dependence for reproducibility in preview).
+      const base = new Date('2026-08-25T18:30:00').getTime();
+      const seed = [
+        { text: 'Rounded the composer add button to a pill', at: base },
+        { text: 'Reviewed PR feedback on the logs rail', at: base - 2 * HOUR },
+        { text: 'Standup + sprint planning', at: base - 5 * HOUR },
+        { text: 'Fixed macOS notification banner routing', at: base - 1 * DAY },
+        { text: 'Vendored Tiptap ESM bundle', at: base - 2 * DAY },
+      ];
+      for (const s of seed) {
+        const log = createLog(s.text);
+        log.createdAt = s.at;
+        await saveLog(log);
+      }
+    }
+    await import('./focus-composer.js');
+    await import('./index.js?v=8');
+  </script>
 </body>
 </html>

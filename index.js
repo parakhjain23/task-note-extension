@@ -29,7 +29,6 @@ import { logsWithGaps, formatLogDuration, uniqueLogDates, formatLogDateLabel, lo
 
 const quickAddInput = document.getElementById('quickAddInput');
 const quickAddBtn = document.getElementById('quickAddBtn');
-const searchInput = document.getElementById('searchInput');
 const taskList = document.getElementById('taskList');
 const emptyState = document.getElementById('emptyState');
 const logList = document.getElementById('logList');
@@ -39,13 +38,11 @@ const logsPanel = document.getElementById('logsPanel');
 const remindersPanel = document.getElementById('remindersPanel');
 const reminderList = document.getElementById('reminderList');
 const reminderEmptyState = document.getElementById('reminderEmptyState');
-const reminderFields = document.getElementById('reminderFields');
-const reminderDateInput = document.getElementById('reminderDateInput');
-const reminderTimeInput = document.getElementById('reminderTimeInput');
-const reminderRepeatInput = document.getElementById('reminderRepeatInput');
 const logDateSidebar = document.getElementById('logDateSidebar');
 const logDateList = document.getElementById('logDateList');
 const taskTabs = document.getElementById('taskTabs');
+const logsHeader = document.getElementById('logsHeader');
+const remindersHeader = document.getElementById('remindersHeader');
 const viewHint = document.getElementById('viewHint');
 const composerHint = document.getElementById('composerHint');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -54,7 +51,16 @@ const settingsOverlay = document.getElementById('settingsOverlay');
 const settingsFrame = document.getElementById('settingsFrame');
 const settingsCloseBtn = document.getElementById('settingsCloseBtn');
 const newtabStage = document.querySelector('.newtab-stage');
+const chatComposer = document.querySelector('.chat-composer');
 const notesPane = document.getElementById('notesPane');
+
+// Keep the floating log-date rail's bottom aligned to the header (i.e. just
+// above the composer) by exposing the composer's height as a CSS variable.
+function syncSidebarBottom() {
+  const h = chatComposer.getBoundingClientRect().height;
+  newtabStage.style.setProperty('--composer-height', `${h}px`);
+}
+window.addEventListener('resize', syncSidebarBottom);
 
 let allTasks = [];
 let allLogs = [];
@@ -165,22 +171,11 @@ function setupListeners() {
     }
   });
 
-  searchInput.addEventListener('input', renderTasks);
-
   quickAddInput.addEventListener('input', () => {
     quickAddInput.classList.remove('invalid');
-    if (currentView !== VIEW.REMINDERS) return;
-    // Live-preview parsed phrase in the date/time/repeat pickers
-    const parsed = parseReminderInput(quickAddInput.value);
-    if (parsed.reminderAt) {
-      const d = new Date(parsed.reminderAt);
-      reminderDateInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      reminderTimeInput.value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      reminderDateInput.classList.remove('invalid');
-      reminderTimeInput.classList.remove('invalid');
-    }
-    if (parsed.repeatType) {
-      reminderRepeatInput.value = parsed.repeatType;
+    // In Tasks view the same input doubles as a live search filter.
+    if (currentView === VIEW.TASKS) {
+      renderTasks();
     }
   });
 
@@ -253,10 +248,12 @@ function updateViewUI() {
 
   tasksPanel.classList.toggle('hidden', !isTasks);
   logsPanel.classList.toggle('hidden', !isLogs);
-  remindersPanel.classList.toggle('hidden', !isReminders);
   logDateSidebar.classList.toggle('hidden', !isLogs);
+  newtabStage.classList.toggle('logs-view', isLogs);
+  remindersPanel.classList.toggle('hidden', !isReminders);
   taskTabs.classList.toggle('hidden', !isTasks);
-  reminderFields.classList.toggle('hidden', !isReminders);
+  logsHeader.classList.toggle('hidden', !isLogs);
+  remindersHeader.classList.toggle('hidden', !isReminders);
 
   const views = enabledViews();
   if (views.length < 2) {
@@ -269,10 +266,10 @@ function updateViewUI() {
   }
 
   if (isTasks) {
-    quickAddInput.placeholder = 'Add a task… "Call dentist tomorrow at 9am"';
+    quickAddInput.placeholder = 'Search or add a task… "Call dentist tomorrow at 9am"';
     quickAddBtn.textContent = 'Add';
     composerHint.textContent =
-      'Natural language: tomorrow, tonight, next Monday · ⌘+Enter for log · ESC to switch';
+      'Type to search · Enter to add · ⌘+Enter for log · ESC to switch';
     renderTasks();
   } else if (isLogs) {
     quickAddInput.placeholder = 'Write a log entry…';
@@ -281,24 +278,13 @@ function updateViewUI() {
     ensureSelectedLogDate();
     renderLogDates();
     renderLogs();
+    syncSidebarBottom();
   } else {
     quickAddInput.placeholder = 'Remind me every day at 12:30 PM for standup…';
     quickAddBtn.textContent = 'Add';
     composerHint.textContent =
-      'Type naturally or pick date, time and repeat · ESC → Tasks';
-    prefillReminderFields();
+      'Type naturally, e.g. "every day at 12:30 PM for standup" · ESC → Tasks';
     renderReminders();
-  }
-}
-
-function prefillReminderFields() {
-  if (!reminderDateInput.value) {
-    const d = new Date();
-    reminderDateInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-  if (!reminderTimeInput.value) {
-    const d = new Date(Date.now() + 60 * 60 * 1000);
-    reminderTimeInput.value = `${String(d.getHours()).padStart(2, '0')}:00`;
   }
 }
 
@@ -356,7 +342,9 @@ function renderLogDates() {
     return;
   }
 
-  for (const dateKey of dates) {
+  // uniqueLogDates is newest-first; reverse so the list reads oldest → newest
+  // top-to-bottom, putting today at the bottom (chat-style).
+  for (const dateKey of [...dates].reverse()) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'log-date-btn';
@@ -369,6 +357,9 @@ function renderLogDates() {
     });
     logDateList.appendChild(btn);
   }
+
+  // Keep the newest day (bottom of the list) in view.
+  logDateList.scrollTop = logDateList.scrollHeight;
 }
 
 function formatLogTime(ts) {
@@ -386,7 +377,7 @@ function updateTabCounts() {
 }
 
 function renderTasks() {
-  const query = searchInput.value.trim().toLowerCase();
+  const query = quickAddInput.value.trim().toLowerCase();
   let tasks = filterTasksByTab(allTasks, currentTab);
 
   if (query) {
@@ -489,23 +480,14 @@ async function addReminder() {
   quickAddInput.classList.toggle('invalid', !raw);
   if (!raw) return;
 
-  // Natural language first: "remind me every day at 12:30 PM for standup"
+  // Natural language only: "remind me every day at 12:30 PM for standup"
   const parsed = parseReminderInput(raw);
-  const title = parsed.title || 'Reminder';
-  const repeatType = parsed.repeatType ?? (reminderRepeatInput.value || null);
+  const repeatType = parsed.repeatType ?? null;
 
   let reminderAt = parsed.reminderAt;
-  if (!reminderAt) {
-    const dateVal = reminderDateInput.value;
-    const timeVal = reminderTimeInput.value;
-    reminderDateInput.classList.toggle('invalid', !dateVal);
-    reminderTimeInput.classList.toggle('invalid', !timeVal);
-    if (!dateVal || !timeVal) return;
-    reminderAt = new Date(`${dateVal}T${timeVal}`).getTime();
-  }
-
-  if (Number.isNaN(reminderAt)) {
-    reminderDateInput.classList.add('invalid');
+  // The phrase must resolve to a concrete time; otherwise flag the input.
+  if (!reminderAt || Number.isNaN(reminderAt)) {
+    quickAddInput.classList.add('invalid');
     return;
   }
 
@@ -516,17 +498,16 @@ async function addReminder() {
         reminderAt = nextRepeatTime(reminderAt, repeatType);
       }
     } else {
-      reminderTimeInput.classList.add('invalid');
+      quickAddInput.classList.add('invalid');
       return;
     }
   }
 
-  reminderDateInput.classList.remove('invalid');
-  reminderTimeInput.classList.remove('invalid');
+  quickAddInput.classList.remove('invalid');
 
   const reminder = createTask({
     kind: 'reminder',
-    title,
+    title: parsed.title || 'Reminder',
     reminderAt,
     repeatType,
   });

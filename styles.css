@@ -18,9 +18,11 @@
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   --input-bg: #ffffff;
   --tag-bg: var(--bg);
+  --editor-bg: #ffffff;
   --status-ok: #059669;
   --status-warn: #d97706;
   --main-width: 720px;
+  --notes-max: 1360px;
   --log-date-sidebar-width: 108px;
   --log-date-sidebar-gap: 14px;
 }
@@ -40,6 +42,7 @@
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     --input-bg: #1f1f1f;
     --tag-bg: #333333;
+    --editor-bg: #1f1f1f;
     --priority-low: #a3a3a3;
     /* Emerald, matching --primary; the light-theme blue is too dark on #262626. */
     --link: #10b981;
@@ -83,12 +86,22 @@ body {
   flex-direction: column;
 }
 
+/* Day rail floats just outside the main column, to the left of the logs
+   view — a vertical stack that reads oldest → newest with today at the
+   bottom (chat-style), anchored to the bottom so it lines up with the
+   entries on the right. */
 .log-date-sidebar {
   position: absolute;
-  top: 48px;
+  top: 0;
+  /* End the rail at the header (just above the composer) rather than the very
+     bottom of the stage. --composer-height is kept in sync from JS. */
+  bottom: var(--composer-height, 131px);
   right: calc(100% + var(--log-date-sidebar-gap));
   width: var(--log-date-sidebar-width);
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  /* Hug the dates to the bottom so the separator starts there. */
+  justify-content: flex-end;
 }
 
 .log-date-sidebar.hidden {
@@ -99,8 +112,22 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  position: sticky;
-  top: 48px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 12px 14px 12px 4px;
+}
+
+/* Full-height vertical divider between the day rail and the entries,
+   shown only in the logs view. Sits at the left edge of the main column. */
+.newtab-stage.logs-view::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -12px;
+  width: 1px;
+  background: var(--border);
+  pointer-events: none;
 }
 
 .log-date-btn {
@@ -133,10 +160,11 @@ body {
 }
 
 .newtab-body .header {
-  margin-top: 48px;
+  margin-top: 0;
   background: transparent;
   border-bottom: none;
   margin-bottom: 0;
+  padding: 10px 16px 6px;
 }
 
 #tasksPanel,
@@ -149,22 +177,13 @@ body {
 }
 
 #remindersPanel .task-scroll {
-  flex: 0 1 auto;
+  flex: 1;
 }
 
 #logsPanel.hidden,
 #tasksPanel.hidden,
 #remindersPanel.hidden {
   display: none;
-}
-
-.logs-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
 }
 
 .logs-toolbar-label {
@@ -189,7 +208,7 @@ body {
 }
 
 .log-list {
-  flex: 1;
+  margin-top: auto;
   padding: 20px 16px 12px;
   display: flex;
   flex-direction: column;
@@ -242,13 +261,17 @@ body {
 .task-scroll {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 
+/* Anchor the list to the bottom of the scroll area so items stack upward,
+   chat-style, sitting just above the tabs and input. */
 .newtab-body .task-list {
-  flex: 1;
+  flex: none;
+  margin-top: auto;
   padding: 20px 16px 12px;
 }
 
@@ -268,47 +291,26 @@ body {
   margin-top: auto;
 }
 
-.reminder-fields {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.reminder-fields.hidden {
-  display: none;
-}
-
-.reminder-fields input,
-.reminder-fields select {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font: inherit;
-  font-size: 13px;
-  background: var(--surface);
-  color: var(--text);
-}
-
-.reminder-fields input:focus,
-.reminder-fields select:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-.reminder-fields .invalid,
 .chat-input-row:has(input.invalid) {
   border-color: var(--danger);
 }
 
+/* Help sits above the reminders, and the pair is anchored to the bottom of
+   the scroll area (chat-style) — the auto margin pushes the group down. */
 .reminder-help {
   flex-shrink: 0;
+  margin-top: auto;
   padding: 12px 16px 14px;
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.6;
+}
+
+/* The list follows the help directly instead of carrying its own bottom
+   anchor (which would split the group apart). */
+#remindersPanel .task-list {
+  margin-top: 0;
 }
 
 .reminder-help-title {
@@ -376,7 +378,7 @@ body {
   color: var(--text-muted);
 }
 
-.chat-add-btn {
+.chat-input-row .chat-add-btn {
   flex-shrink: 0;
   padding: 10px 18px;
   border-radius: 999px;
@@ -664,6 +666,16 @@ h4.ce-header {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-heading.hidden {
+  display: none;
 }
 
 .header h1 {
@@ -1191,11 +1203,29 @@ h4.ce-header {
 /* ── Notes split layout ───────────────────────────────────────── */
 .newtab-stage.notes-enabled {
   width: 100%;
-  max-width: 1360px;
+  max-width: var(--notes-max);
   display: flex;
   flex-direction: row;
   align-items: stretch;
   gap: 16px;
+}
+
+/* Paint the page gutter to the right of the (centered, capped) stage with the
+   editor surface, so the note editor reads as white all the way to the screen
+   edge instead of stopping at the stage boundary. Sits above the page
+   background but below all content, so it never covers the editor text. */
+.newtab-stage.notes-enabled .notes-pane::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  /* Right gutter width: the 24px body padding on narrow screens, or the
+     centering gutter once the viewport exceeds the capped stage width. */
+  width: max(24px, calc((100vw - var(--notes-max)) / 2));
+  background: var(--editor-bg);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .newtab-stage.notes-enabled .newtab-container {
@@ -1209,10 +1239,11 @@ h4.ce-header {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  /* The stage gap is 16px, so the remaining 16px of leading padding centers
-     this divider in the space between the tasks and notes columns. */
+  /* Lighter surface so the editor reads as a distinct panel, separate from
+     the task list on the left. */
+  background: var(--editor-bg);
   border-left: 0.2px solid var(--border);
-  padding: 48px 0 24px 16px;
+  padding: 24px;
   gap: 14px;
 }
 
@@ -1254,11 +1285,32 @@ h4.ce-header {
   display: none;
 }
 
-.notes-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Ellipsis menu next to the note title in the editor header. */
+.note-header-menu-wrap {
+  position: relative;
   flex-shrink: 0;
+}
+
+/* No title (and nothing single-note to act on) while browsing the grid. */
+.notes-pane.list-mode .note-header-menu-wrap {
+  display: none;
+}
+
+.note-header-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 140px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.note-header-menu.hidden {
+  display: none;
 }
 
 .note-editor-view {
@@ -1724,6 +1776,7 @@ h4.ce-header {
 }
 
 .note-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border);
@@ -1842,13 +1895,109 @@ h4.ce-header {
   font-style: italic;
 }
 
+.note-card-footer {
+  display: flex;
+  align-items: center;
+}
+
 .note-card-title {
-  padding: 8px 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 4px 8px 10px;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.note-card-menu-btn {
+  flex-shrink: 0;
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 0;
+}
+
+.note-card-menu-btn:hover {
+  background: var(--tag-bg);
+  color: var(--text);
+}
+
+/* Small dropdown anchored inside the card (over the thumb) so it isn't
+   clipped by the card's overflow. */
+.note-card-menu {
+  position: absolute;
+  right: 8px;
+  bottom: 38px;
+  z-index: 5;
+  min-width: 130px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.note-card-menu.hidden {
+  display: none;
+}
+
+.note-card-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.note-card-menu-item:hover {
+  background: var(--tag-bg);
+}
+
+.note-card-menu-item.delete {
+  color: var(--danger);
+}
+
+/* Dashed "create note" tile that sits first in the grid. */
+.note-card-new {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 154px;
+  border-style: dashed;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.note-card-new:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+
+.note-card-new-plus {
+  font-size: 20px;
+  line-height: 1;
 }
 
 /* ── Command palette (Cmd/Ctrl+K) ─────────────────────────────── */
