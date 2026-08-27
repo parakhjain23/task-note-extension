@@ -53,6 +53,54 @@ const settingsCloseBtn = document.getElementById('settingsCloseBtn');
 const newtabStage = document.querySelector('.newtab-stage');
 const chatComposer = document.querySelector('.chat-composer');
 const notesPane = document.getElementById('notesPane');
+const paneResizer = document.getElementById('paneResizer');
+
+// ── Resizable split between the tasks column and the notes pane ──
+// Drag the divider to adjust the tasks column width (persisted as a %).
+const PANE_WIDTH_KEY = 'tasksPaneWidth';
+const PANE_MIN_PCT = 25;
+const PANE_MAX_PCT = 70;
+
+function applyStoredPaneWidth() {
+  const stored = parseFloat(localStorage.getItem(PANE_WIDTH_KEY));
+  if (Number.isFinite(stored)) {
+    newtabStage.style.setProperty('--tasks-pane-width', `${stored}%`);
+  }
+}
+
+paneResizer.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  paneResizer.setPointerCapture(e.pointerId);
+  paneResizer.classList.add('dragging');
+  document.body.classList.add('pane-resizing');
+  const stageRect = newtabStage.getBoundingClientRect();
+
+  const onMove = (ev) => {
+    let pct = ((ev.clientX - stageRect.left) / stageRect.width) * 100;
+    pct = Math.min(PANE_MAX_PCT, Math.max(PANE_MIN_PCT, pct));
+    newtabStage.style.setProperty('--tasks-pane-width', `${pct}%`);
+    localStorage.setItem(PANE_WIDTH_KEY, pct.toFixed(2));
+  };
+
+  const onUp = (ev) => {
+    paneResizer.releasePointerCapture(ev.pointerId);
+    paneResizer.classList.remove('dragging');
+    document.body.classList.remove('pane-resizing');
+    paneResizer.removeEventListener('pointermove', onMove);
+    paneResizer.removeEventListener('pointerup', onUp);
+  };
+
+  paneResizer.addEventListener('pointermove', onMove);
+  paneResizer.addEventListener('pointerup', onUp);
+});
+
+// Double-click resets to the default 40/60 split.
+paneResizer.addEventListener('dblclick', () => {
+  localStorage.removeItem(PANE_WIDTH_KEY);
+  newtabStage.style.removeProperty('--tasks-pane-width');
+});
+
+applyStoredPaneWidth();
 
 // Keep the floating log-date rail's bottom aligned to the header (i.e. just
 // above the composer) by exposing the composer's height as a CSS variable.
@@ -117,6 +165,7 @@ async function applyFeatures() {
   const notesOn = !!features.notes;
   newtabStage.classList.toggle('notes-enabled', notesOn);
   notesPane.classList.toggle('hidden', !notesOn);
+  paneResizer.classList.toggle('hidden', !notesOn);
 
   if (notesOn) {
     if (!notesWorkspace) {

@@ -1229,8 +1229,47 @@ h4.ce-header {
 }
 
 .newtab-stage.notes-enabled .newtab-container {
-  flex: 0 0 40%;
-  min-width: 0;
+  flex: 0 0 var(--tasks-pane-width, 40%);
+  min-width: 280px;
+}
+
+/* Draggable divider between the tasks column and the notes pane. */
+.pane-resizer {
+  flex: 0 0 auto;
+  width: 10px;
+  margin: 0 -13px 0 -13px; /* sit inside the stage's 16px gap so layout width stays the same */
+  cursor: col-resize;
+  position: relative;
+  z-index: 5;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.pane-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.pane-resizer:hover::after,
+.pane-resizer.dragging::after {
+  background: var(--accent, #888);
+}
+
+.pane-resizer.hidden {
+  display: none;
+}
+
+/* While dragging, keep the col-resize cursor and disable text selection everywhere. */
+body.pane-resizing,
+body.pane-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .notes-pane {
