@@ -25,6 +25,8 @@ const importMergeBtn = document.getElementById('importMergeBtn');
 const importReplaceBtn = document.getElementById('importReplaceBtn');
 const importFile = document.getElementById('importFile');
 const statusMsg = document.getElementById('statusMsg');
+const localBackupBtn = document.getElementById('localBackupBtn');
+const localBackupLast = document.getElementById('localBackupLast');
 
 init();
 
@@ -50,6 +52,30 @@ async function init() {
   importMergeBtn.addEventListener('click', () => openImport('merge'));
   importReplaceBtn.addEventListener('click', () => openImport('replace'));
   importFile.addEventListener('change', handleImport);
+
+  localBackupBtn.addEventListener('click', runLocalBackup);
+  const { localBackupLastAt } = await chrome.storage.local.get('localBackupLastAt');
+  updateLocalBackupLast(localBackupLastAt);
+}
+
+function updateLocalBackupLast(ts) {
+  localBackupLast.textContent = ts
+    ? `Last local backup: ${formatDateTime(ts)}`
+    : 'No local backup yet';
+}
+
+async function runLocalBackup() {
+  localBackupBtn.disabled = true;
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'LOCAL_BACKUP_NOW' });
+    if (!res?.ok) throw new Error(res?.error || 'Backup failed');
+    updateLocalBackupLast(res.at);
+    showStatus('Local backup written');
+  } catch (err) {
+    showStatus(err.message, true);
+  } finally {
+    localBackupBtn.disabled = false;
+  }
 }
 
 async function saveFeature(key, enabled) {

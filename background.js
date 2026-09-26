@@ -13,6 +13,11 @@ import {
 } from './lib/constants.js';
 import { isVisible, activeTaskCount, isSnoozed } from './lib/utils.js';
 import { nextRepeatTime } from './lib/repeat.js';
+import {
+  LOCAL_BACKUP_ALARM,
+  ensureLocalBackupAlarm,
+  writeLocalBackup,
+} from './lib/local-backup.js';
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 
@@ -21,6 +26,7 @@ const TASKS_URL = chrome.runtime.getURL('index.html');
 chrome.runtime.onInstalled.addListener(async (details) => {
   await syncAllAlarms();
   await updateBadge();
+  await ensureLocalBackupAlarm();
   if (details.reason === 'install') {
     chrome.tabs.create({ url: TASKS_URL });
   }
@@ -29,6 +35,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 chrome.runtime.onStartup.addListener(async () => {
   await syncAllAlarms();
   await updateBadge();
+  await ensureLocalBackupAlarm();
 });
 
 chrome.action.onClicked.addListener(async () => {
@@ -49,6 +56,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .then(() => sendResponse({ ok: true }));
     return true;
   }
+  if (message.type === 'LOCAL_BACKUP_NOW') {
+    writeLocalBackup()
+      .then((at) => sendResponse({ ok: true, at }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
   if (message.type === 'OPEN_SIDE_PANEL') {
     chrome.storage.session.set({ sidePanelTaskId: message.taskId }).then(() => {
       chrome.windows.getCurrent((win) => {
@@ -64,6 +77,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   console.log('Alarm fired:', alarm.name, 'at', new Date(alarm.scheduledTime));
+  if (alarm.name === LOCAL_BACKUP_ALARM) {
+    try {
+      await writeLocalBackup();
+    } catch (err) {
+      console.error('Local backup failed:', err);
+    }
+    return;
+  }
   if (alarm.name.startsWith('snooze-')) {
     const taskId = alarm.name.slice('snooze-'.length);
     await handleSnoozeExpired(taskId);

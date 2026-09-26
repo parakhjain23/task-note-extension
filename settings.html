@@ -38,6 +38,15 @@
   </section>
 
   <section class="settings-section">
+    <h2>Automatic Local Backup</h2>
+    <p>Every 2 hours your data is written to <code>Downloads/TaskReminder/task-reminder-backup.json</code> (same file, overwritten). If you clear browser storage, restore it with <strong>Import</strong> below.</p>
+    <div class="settings-actions">
+      <button id="localBackupBtn" class="btn btn-secondary">Backup Now</button>
+    </div>
+    <div id="localBackupLast" class="meta-hint"></div>
+  </section>
+
+  <section class="settings-section">
     <h2>Backup & Restore</h2>
     <p>Export your tasks as JSON and import them manually. Merge keeps the newest version of each task.</p>
     <div class="settings-actions">
